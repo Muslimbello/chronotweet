@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Twitter Scheduler MVP
+  version: 0.1.0
+  description: MVP API for X/Twitter post scheduling
+
+servers:
+  - url: http://localhost:8000/api
+
+components:
+  securitySchemes:
+    XOAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://twitter.com/i/oauth2/authorize
+          tokenUrl: https://api.twitter.com/2/oauth2/token
+          scopes:
+            tweet.write: Post tweets
+
+  schemas:
+    ScheduledTweet:
+      type: object
+      required:
+        - text
+        - scheduled_at
+      properties:
+        text:
+          type: string
+          maxLength: 280
+        scheduled_at:
+          type: string
+          format: date-time
+
+paths:
+  /auth/twitter:
+    get:
+      summary: Start X login
+      responses:
+        200:
+          description: X auth URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url:
+                    type: string
+                    example: "https://twitter.com/i/oauth2/authorize?..."
+
+  /auth/callback:
+    post:
+      summary: Handle X callback
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+      responses:
+        200:
+          description: Authentication success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+        400:
+          description: Bad Request – Invalid input
+        401:
+          description: Unauthorized – Invalid or missing authentication
+
+  /tweets:
+    post:
+      summary: Schedule tweet
+      security:
+        - XOAuth2: [tweet.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduledTweet'
+      responses:
+        201:
+          description: Tweet scheduled
+        400:
+          description: Bad Request – Invalid input
+        401:
+          description: Unauthorized – Invalid or missing authentication
+
+    get:
+      summary: List scheduled tweets
+      security:
+        - XOAuth2: [tweet.write]
+      responses:
+        200:
+          description: Tweet list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledTweet'
+        401:
+          description: Unauthorized – Invalid or missing authentication
